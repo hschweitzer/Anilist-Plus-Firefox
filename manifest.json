@@ -1,0 +1,31 @@
+{
+    "manifest_version": 2,
+    "name": "Anilist+ for Anilist",
+    "version": "0.2.0",
+  
+    "description": "Enhanced AniList experience",
+  
+    "author": "rirrsmo & hadrian",
+
+
+    "content_scripts": [
+      {
+        "matches": ["*://anilist.co/*"],
+        "js": [
+          "list_visual_changes.js", 
+          "content_DAO.js"
+        ],
+        "run_at": "document_end",
+        "all_frames": true
+      }
+    ],
+
+    "permissions": ["tabs", "activeTab","*://anilist.co/*","webNavigation"],
+    
+    "short_name": "AniList+",
+
+    "icons": {
+      "48": "images/icon.png"
+    }
+}
+  
