@@ -22,19 +22,19 @@ function styleEnhancement(saturation) {
     switch (scoreType) {
         case "POINT_100":
             accuracy = 100
-            break
+            break;
 
         case "POINT_5":
             accuracy = 5
-            break
+            break;
 
         case "POINT_3":
             accuracy = 3
-            break
+            break;
 
         default:
             accuracy = 10
-            break
+            break;
     }
 
     // This method only really works if the colors are complementary

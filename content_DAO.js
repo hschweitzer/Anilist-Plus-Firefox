@@ -6,10 +6,10 @@
 
 'use strict'
 
-function showStudioLink(navBar) {
+function showStudioLink(navBar, vuedata) {
     navBar.insertAdjacentHTML(
         'beforeend', 
-        '<a data-v-256f73e9 id="studio_link" style="cursor: pointer;" class="link">Studios</a>'
+        `<a ${vuedata} id="studio_link" style="cursor: pointer;" class="link">Studios</a>`
     )
 }
 
@@ -19,15 +19,16 @@ var observer = new MutationObserver(async function() {
     let studioLink = document.getElementById('studio_link')
 
     if(navBar && !studioLink && (url.includes('/anime/'))) { 
-        // When re-visiting the page of an anime the studio link will sometimes be loaded before the first test
-        showStudioLink(navBar)
+        
+        let vuedata = navBar.firstElementChild.attributes[0].name
+        showStudioLink(navBar, vuedata)
         studioLink = document.getElementById('studio_link')
+
         let res = await mediaTitle(mediaId())
         let studioList = res.data.Media.studios.nodes
-        //console.log(studioList)
 
         studioLink.addEventListener('click', () => {
-            
+
             if (window.location.href.split('/').length !== 5) {
                 var oldLink = document.querySelector('.router-link-exact-active.router-link-active')
                 oldLink.classList.add('old-container-active')
@@ -35,6 +36,7 @@ var observer = new MutationObserver(async function() {
             } else {
                 navBar.firstChild.classList.add('old-container-active')
             }
+
             studioLink.classList.add('router-link-exact-active', 'router-link-active')
             let contentContainer = document.querySelector('.content.container')
             let oldContainer = contentContainer.lastChild
@@ -56,14 +58,69 @@ var observer = new MutationObserver(async function() {
     }
 })
 
-async function mediaTitle(a) {
-    var variables = {
-        id: a
+const mediaTitle = async (a) => {
+    const query = {
+        "query": `
+            query ($id: Int) {
+                Media (id: $id, type: ANIME) {
+                    id
+                    studios {
+                        nodes {
+                            name
+                            media(sort: POPULARITY_DESC) {
+                                nodes {
+                                    id
+                                    title {
+                                        userPreferred
+                                    }
+                                    coverImage {
+                                        medium
+                                    }
+                                    startDate {
+                                        year
+                                        month
+                                        day
+                                    }
+                                    season
+                                    description
+                                    type
+                                    format
+                                    genres
+                                    isAdult
+                                    averageScore
+                                    popularity
+                                    mediaListEntry {
+                                        status
+                                    }
+                                    status
+                                    nextAiringEpisode {
+                                        airingAt
+                                        timeUntilAiring
+                                        episode
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        `,
+        "variables" : {
+            "id": a
+        }
     }
-    var dao = new DAO(variables)
-    await dao.getStudios()
-    var studios = dao.getData()
-    return studios
+
+    let data = null
+    let errors = null
+
+    try {
+        const data = await sendAniListQuery(query)
+        console.log(a)
+    } catch(e) {
+        console.log("Request error", e)
+    }
+
+    return data
 }
 
 function mediaId() {
@@ -119,142 +176,48 @@ function createStudiosElement(studioList) {
 
 observer.observe(document, { childList: true, subtree: true })
 
-///////////////////////////////////////////////////////////////////
-
-///////////////////////// DAO /////////////////////////////////////
-//                                                               //
-//                                                               //
-//  Summary:                                                     //
-//  Contains functions to access anilist API                     //
-//  Documentation https://anilist.github.io/ApiV2-GraphQL-Docs/  //
-//                                                               //
-///////////////////////////////////////////////////////////////////
-
-class DAO {
-
-    constructor(variables) {
-        this.variables = variables
-        this.url = 'https://graphql.anilist.co'
-    }
-
-    ////////////////////
-    // GETTER SETTERS //
-    ////////////////////
-
-    getData() {
-        return DAO.data
-    }
-
-    ////////////////////
-    ////////////////////
-    ////////////////////
-    
-    async fetchQuery(query) {
-        var url = this.url
-        var options = {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-            },
-            body: JSON.stringify({
-                query: query,
-                variables: this.variables
-            })
-        }
-        
-        await fetch(url, options).then(this.handleResponse)
-        .then(this.handleData)
-        .catch(this.handleError)
-    }
-    
-    handleResponse(response) {
-        return response.json().then(function (json) {
-            return response.ok ? json : Promise.reject(json)
+const sendAniListQuery = async (query) => {
+    console.log("I'm in!")
+	const url = "https://graphql.anilist.co";
+	const urlOptions = {
+		method: "POST",
+		headers: {
+			"Content-Type": "application/json",
+			"Accept": "application/json",
+        },
+        body: JSON.stringify({
+            query: query
         })
-    }
+	};
     
-    handleError(error) {
-        alert('Error, check console')
-        console.error(error)
-    }
-    
-    handleData(data) {
-        DAO.data = data
-    }
+    await fetch(url, urlOptions).then(handleResponse)
+                                .then(handleData)
+                                .catch(handleError);
 
-    /////////////////////////////////////////////////////////////////////////
-    //  QUERY https://anilist.github.io/ApiV2-GraphQL-Docs/query.doc.html  //
-    /////////////////////////////////////////////////////////////////////////
-    
-    async getTitle() {
-    
-        var query = `
-        query ($id: Int) {
-            Media (id: $id, type: ANIME) { 
-                id
-                title {
-                romaji
-                english
-                native
-                }
-            }
-        }
-        `
-        await this.fetchQuery(query)
-    }
+/*
+	const retrieve = await fetch(url, urlOptions);
+	const { data, errors } = await retrieve.json();
+	console.log("retrieve", retrieve, data, errors);
 
-    async getStudios() {
-        var query = `
-        query ($id: Int) {
-            Media (id: $id, type: ANIME) {
-                id
-                studios {
-                    nodes {
-                        name
-                        media(sort: POPULARITY_DESC) {
-                            nodes {
-                                id
-                                title {
-                                    userPreferred
-                                }
-                                coverImage {
-                                    medium
-                                }
-                                startDate {
-                                    year
-                                    month
-                                    day
-                                }
-                                season
-                                description
-                                type
-                                format
-                                genres
-                                isAdult
-                                averageScore
-                                popularity
-                                mediaListEntry {
-                                    status
-                                }
-                                status
-                                nextAiringEpisode {
-                                    airingAt
-                                    timeUntilAiring
-                                    episode
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        `;
-        await this.fetchQuery(query)
-    } 
+	if (errors) {
+		console.log("Unsuccessfully made query", errors);
+	}
 
-    ////////////////////////////////////////////////////////////////////////////
-    // MUTATION https://anilist.github.io/ApiV2-GraphQL-Docs/mutation.doc.html /
-    ////////////////////////////////////////////////////////////////////////////
+	return [data, errors];*/
+};
 
+function handleResponse(response) {
+    console.log("handleResponse")
+    return response.json().then(function (json) {
+        return response.ok ? json : Promise.reject(json);
+    });
+}
+​
+function handleData(data) {
+    return data
+}
+​
+function handleError(error) {
+    alert('Error, check console');
+    console.error(error);
 }
